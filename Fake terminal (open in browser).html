@@ -1,0 +1,687 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Terminal</title>
+    <style>
+        :root {
+            --main-color: white;
+        }
+
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            background-color: black;
+            overflow: hidden; 
+            font-family: 'Courier New', Courier, monospace;
+        }
+
+        /* --- TERMINAL STYLES --- */
+        #terminalContainer {
+            background-color: black;
+            color: var(--main-color);
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            transition: background 0.3s ease; 
+        }
+
+        .fullscreen-mode {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            padding: 20px;
+            padding-top: 50px;
+            z-index: 10;
+        }
+
+        .windowed-mode {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 600px;
+            height: 400px;
+            border: 2px solid #555;
+            box-shadow: 0 0 20px rgba(0,0,0,0.8);
+            z-index: 200;
+            padding: 0; 
+        }
+
+        #windowHeader {
+            display: none; 
+            background-color: #222;
+            color: white;
+            padding: 5px 10px;
+            justify-content: space-between;
+            align-items: center;
+            font-family: Arial, sans-serif;
+            font-size: 14px;
+            border-bottom: 2px solid #555;
+        }
+
+        .windowed-mode #windowHeader { display: flex; }
+        .windowed-mode .fullscreen-header { display: none; } 
+
+        .close-btn {
+            background-color: red;
+            color: white;
+            padding: 0px 8px;
+            font-weight: bold;
+            cursor: pointer;
+            border-radius: 3px;
+        }
+
+        #terminalBody {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.4); 
+        }
+        
+        .windowed-mode #terminalBody { padding: 10px; }
+
+        .fullscreen-header {
+            position: fixed;
+            top: 15px;
+            left: 20px;
+            font-weight: bold;
+            font-size: 18px;
+            letter-spacing: 2px;
+            color: var(--main-color);
+        }
+
+        #output {
+            white-space: pre-wrap;
+            line-height: 1.5;
+            text-shadow: 1px 1px 2px black;
+        }
+
+        .input-line { display: flex; align-items: center; margin-top: 5px; text-shadow: 1px 1px 2px black; }
+        .prompt { margin-right: 10px; font-weight: bold; }
+        
+        input[type="text"] {
+            background-color: transparent;
+            color: var(--main-color);
+            border: none;
+            outline: none;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 16px;
+            width: 100%;
+            text-shadow: 1px 1px 2px black;
+        }
+
+        ::-webkit-scrollbar { display: none; }
+
+        /* --- POP-UP INSTALL APK --- */
+        #installPopup {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: black;
+            color: white;
+            border: 2px solid #555;
+            width: 350px;
+            padding: 20px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.8);
+            font-family: Arial, sans-serif;
+            z-index: 100;
+        }
+
+        .popup-top {
+            display: flex;
+            align-items: flex-start;
+        }
+
+        .popup-bottom {
+            display: flex;
+            justify-content: flex-end;
+            margin-top: 30px;
+        }
+
+        .popup-bottom button {
+            padding: 8px 15px;
+            margin-left: 10px;
+            cursor: pointer;
+            border: none;
+            font-weight: bold;
+            font-size: 14px;
+            border-radius: 3px;
+        }
+
+        .btn-batal { background-color: #555; color: white; }
+        .btn-batal:hover { background-color: #777; }
+        .btn-install { background-color: white; color: black; }
+        .btn-install:hover { background-color: #ddd; }
+
+        .icon-youtube { font-weight: bold; color: red; font-size: 24px; }
+        .icon-whatsapp { font-weight: bold; color: #25D366; font-size: 24px; }
+        .icon-terminal { font-weight: bold; color: white; font-size: 24px; font-family: 'Courier New', monospace; }
+        .icon-roblox { 
+            width: 30px; height: 30px; background-color: white; 
+            border: 4px solid #333; border-radius: 6px; transform: rotate(15deg); 
+        }
+        .icon-default { font-size: 30px; }
+
+        #appNameDisplay {
+            margin-left: 15px;
+            font-size: 18px;
+            margin-top: 5px;
+        }
+
+        /* --- PC SIMULATOR WINDOWS 11 --- */
+        #pcSim {
+            display: none;
+            width: 100vw;
+            height: 100vh;
+            background: url('https://images.unsplash.com/photo-1618553258591-a18518386345?q=80&w=2070&auto=format&fit=crop') no-repeat center center;
+            background-size: cover;
+            background-color: #005A9E; 
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: 50;
+        }
+
+        #desktop {
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 20px;
+            height: calc(100vh - 50px);
+        }
+
+        .desktop-app {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            cursor: pointer;
+            width: 80px;
+            text-align: center;
+            color: white;
+            font-family: Arial, sans-serif;
+            font-size: 12px;
+            text-shadow: 1px 1px 3px black;
+        }
+
+        .desktop-app:hover {
+            background-color: rgba(255,255,255,0.2);
+            border-radius: 5px;
+        }
+
+        .desktop-icon-wrap {
+            margin-bottom: 5px;
+            height: 40px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #taskbar {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            height: 50px;
+            background-color: rgba(20, 20, 20, 0.85);
+            backdrop-filter: blur(10px);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .taskbar-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 5px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .taskbar-btn:hover { background-color: rgba(255,255,255,0.1); }
+        
+        .win-logo {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            grid-gap: 2px;
+            width: 22px;
+            height: 22px;
+        }
+        .win-logo div { background-color: #00A4EF; border-radius: 1px; }
+        
+        .tb-terminal-icon {
+            color: white; font-family: monospace; font-size: 20px; font-weight: bold;
+        }
+
+        /* --- ERROR POPUP --- */
+        #errorPopup {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 300px;
+            background: white;
+            border: 1px solid #005A9E;
+            box-shadow: 0 0 10px rgba(0,0,0,0.5);
+            z-index: 300;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: black;
+        }
+        .err-header {
+            background: white;
+            padding: 10px;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+        }
+        .err-header span { color: red; font-size: 20px; margin-right: 10px; font-weight: bold; }
+        .err-content { padding: 15px 20px; font-size: 14px; text-align: center; }
+        .err-footer { background: #f0f0f0; padding: 10px; text-align: center; border-top: 1px solid #ccc; }
+        .err-footer button { padding: 5px 20px; cursor: pointer; }
+
+        /* --- CREDITS --- */
+        #creditsScreen {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background-color: white; color: black; justify-content: center; align-items: center;
+            font-size: 30px; font-weight: bold; font-family: 'Courier New', Courier, monospace;
+            z-index: 999; opacity: 1;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- MAIN TERMINAL APP -->
+    <div id="terminalContainer" class="fullscreen-mode">
+        <div id="windowHeader">
+            <span>Terminal</span>
+            <span class="close-btn" onclick="closeTerminalWindow()">X</span>
+        </div>
+        <div id="terminalBody" onclick="focusInput()">
+            <div class="fullscreen-header">Terminal</div>
+            <div id="output">If you don't understand about coding/hacking please type "help" for more explanation<br></div>
+            <div class="input-line">
+                <span class="prompt">&gt;</span>
+                <input type="text" id="cmdInput" autofocus autocomplete="off" spellcheck="false">
+            </div>
+        </div>
+    </div>
+
+    <!-- POP-UP INSTALL -->
+    <div id="installPopup">
+        <h3 id="installPopupTitle" style="margin-top: 0;">Do you want to install this app?</h3>
+        <div class="popup-top">
+            <div id="appIconContainer"></div>
+            <div id="appNameDisplay"></div>
+        </div>
+        <div class="popup-bottom">
+            <button id="btnCancelInstall" class="btn-batal" onclick="closePopup(false)">Cancel</button>
+            <button id="btnInstallApp" class="btn-install" onclick="closePopup(true)">Install</button>
+        </div>
+    </div>
+
+    <!-- PC SIMULATOR -->
+    <div id="pcSim">
+        <div id="desktop"></div>
+        <div id="taskbar">
+            <div class="taskbar-btn" title="Start">
+                <div class="win-logo"><div></div><div></div><div></div><div></div></div>
+            </div>
+            <div class="taskbar-btn" title="Terminal" onclick="openTerminalWindow()">
+                <div class="tb-terminal-icon">&gt;_</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ERROR POPUP -->
+    <div id="errorPopup">
+        <div class="err-header"><span id="errTitleIcon">✖</span> <b id="errTitleText">Fatal Error</b></div>
+        <div class="err-content" id="errTextBody">This application is corrupt. System failed to load file.</div>
+        <div class="err-footer">
+            <button onclick="document.getElementById('errorPopup').style.display='none'">OK</button>
+        </div>
+    </div>
+
+    <!-- CREDITS -->
+    <div id="creditsScreen">Terminal made by Michael Gemi</div>
+
+    <script>
+        // --- SISTEM BAHASA (DICTIONARY) ---
+        const langDict = {
+            'EN': {
+                help: "Available Commands:<br>Screen (subject) -> allows you to view the subject's screen<br>Control (subject) -> allows you to control the subject's phone/laptop<br>install apk (app) -> installs an application<br>beep (time) -> plays a beep sound<br>text_color -> changes text color<br>change_background -> changes terminal background<br>pc_sim -> shows computer screen on your device<br>home -> return to terminal from sim mode<br>translate -> change terminal language<br>credits -> terminal creator credits<br>",
+                translatePrompt: "System: Choose language [English] [Indonesia]<br>",
+                langChanged: "System: Language changed to English.<br>",
+                colorPrompt: "System: choose text color [green] [white] [red]<br>",
+                bgPrompt: "System: choose background -> [red] [orange] [yellow] [green] [blue] [pink] [purple] [brown] [black] [white] [gray] [anime_boy] [anime_girl]<br>",
+                simReturn: "System returned to initial mode.<br>",
+                cmdNotFound: "Error: Command '{cmd}' not found. Type \"help\" for assistance.<br>",
+                invalidChoice: "System: Choice '{choice}' not recognized. Canceled.<br>",
+                screenSuccess: "Screen {subject} successfully monitored! check phone/laptop settings to view the screen.<br>",
+                controlSuccess: "Control {subject} successfully controlled, to control subject's phone/laptop go to settings then additional settings then turn on wireless device and enter this code [199.762.549]<br>",
+                installOpening: "Opening installer for {app}...<br>",
+                installSuccess: "&gt; System successfully installed {app}.<br>",
+                installCanceled: "&gt; Installation for {app} canceled.<br>",
+                beepSuccess: "Playing beep sound for {time} seconds...<br>",
+                formatErr: "Format error. Type for example: {example}<br>",
+                creditsLoad: "Loading credits...<br>",
+                // UI Elements
+                installTitle: "Do you want to install this app?",
+                btnCancel: "Cancel",
+                btnInstall: "Install",
+                errTitle: "Fatal Error",
+                errText: "This application is corrupt. System failed to load file.",
+                creditsText: "Terminal made by Michael Gemi"
+            },
+            'ID': {
+                help: "Daftar Perintah Tersedia:<br>Screen (subjek) -> jika anda ketik ini anda bisa melihat layar orang<br>Control (subjek) -> bisa mengontrol hp/laptop subjek<br>install apk (aplikasi) -> bisa menginstall aplikasi<br>beep (waktu) -> bisa membunyikan suara beep<br>text_color -> mengubah warna teks<br>change_background -> mengganti background terminal<br>pc_sim -> memunculkan layar komputer di hp/laptop anda<br>home -> untuk kembali ke terminal saat masuk mode sim<br>translate -> mengubah bahasa terminal<br>credits -> kredit pembuat terminal<br>",
+                translatePrompt: "Sistem: pilih bahasa [English] [Indonesia]<br>",
+                langChanged: "Sistem: Bahasa diubah menjadi Indonesia.<br>",
+                colorPrompt: "Sistem: pilih warna text [hijau] [putih] [merah]<br>",
+                bgPrompt: "Sistem: pilih background -> [merah] [orange] [kuning] [hijau] [biru] [pink] [ungu] [coklat] [hitam] [putih] [abu abu] [anime_cowok] [anime_cewek]<br>",
+                simReturn: "Sistem kembali ke mode awal.<br>",
+                cmdNotFound: "Error: Perintah '{cmd}' tidak ditemukan. Ketik \"help\" untuk bantuan.<br>",
+                invalidChoice: "Sistem: Pilihan '{choice}' tidak dikenali. Dibatalkan.<br>",
+                screenSuccess: "Screen {subject} berhasil di pantau! cek di pengaturan hp/laptop untuk melihat layarnya.<br>",
+                controlSuccess: "Control {subject} berhasil di kontrol, untuk mengontrol hp/laptop subjek ke pengaturan lalu ke pengaturan tambahan lalu nyalakan wireless device dan masukkan kode ini [199.762.549]<br>",
+                installOpening: "Membuka installer untuk {app}...<br>",
+                installSuccess: "&gt; Sistem berhasil menginstall {app}.<br>",
+                installCanceled: "&gt; Pemasangan {app} dibatalkan.<br>",
+                beepSuccess: "Memutar suara beep selama {time} detik...<br>",
+                formatErr: "Format error. Ketik misalnya: {example}<br>",
+                creditsLoad: "Memuat credits...<br>",
+                // UI Elements
+                installTitle: "Apakah anda ingin menginstall aplikasi ini?",
+                btnCancel: "Batal",
+                btnInstall: "Install",
+                errTitle: "Fatal Error",
+                errText: "Aplikasi ini corrupt. Sistem gagal memuat file.",
+                creditsText: "Terminal dibuat oleh Michael Gemi"
+            }
+        };
+
+        let currentLang = 'EN'; // Bahasa default saat pertama kali buka
+
+        const input = document.getElementById('cmdInput');
+        const output = document.getElementById('output');
+        const terminalContainer = document.getElementById('terminalContainer');
+        const terminalBody = document.getElementById('terminalBody');
+        const pcSim = document.getElementById('pcSim');
+        const desktop = document.getElementById('desktop');
+        
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        
+        let currentState = 'NORMAL'; 
+        let currentAppToInstall = '';
+        let installedApps = []; 
+
+        function focusInput() {
+            if(document.getElementById('installPopup').style.display !== 'block') {
+                input.focus();
+            }
+        }
+
+        // Fungsi Update UI Teks saat bahasa diganti
+        function updateUILanguage() {
+            const txt = langDict[currentLang];
+            document.getElementById('installPopupTitle').innerText = txt.installTitle;
+            document.getElementById('btnCancelInstall').innerText = txt.btnCancel;
+            document.getElementById('btnInstallApp').innerText = txt.btnInstall;
+            document.getElementById('errTitleText').innerText = txt.errTitle;
+            document.getElementById('errTextBody').innerText = txt.errText;
+            document.getElementById('creditsScreen').innerText = txt.creditsText;
+        }
+
+        function playBeep(seconds) {
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            const oscillator = audioCtx.createOscillator();
+            oscillator.type = 'sine';
+            oscillator.frequency.setValueAtTime(800, audioCtx.currentTime);
+            oscillator.connect(audioCtx.destination);
+            oscillator.start();
+            oscillator.stop(audioCtx.currentTime + seconds);
+        }
+
+        function playLoudErrorBeeps() {
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            for(let i=0; i<3; i++) {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'square';
+                osc.frequency.setValueAtTime(1000, audioCtx.currentTime + (i * 0.4));
+                gain.gain.setValueAtTime(1, audioCtx.currentTime + (i * 0.4));
+                
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                
+                osc.start(audioCtx.currentTime + (i * 0.4));
+                osc.stop(audioCtx.currentTime + (i * 0.4) + 0.2); 
+            }
+        }
+
+        function getAppIconHTML(appName) {
+            const name = appName.toLowerCase();
+            if (name === 'youtube') return '<div class="icon-youtube">▶</div>';
+            if (name === 'whatsapp') return '<div class="icon-whatsapp">💬</div>';
+            if (name === 'terminal') return '<div class="icon-terminal">&gt;_</div>';
+            if (name === 'roblox') return '<div class="icon-roblox"></div>';
+            return '<div class="icon-default">📦</div>';
+        }
+
+        window.closePopup = function(isInstall) {
+            document.getElementById('installPopup').style.display = 'none';
+            if (isInstall) {
+                installedApps.push(currentAppToInstall);
+                output.innerHTML += langDict[currentLang].installSuccess.replace('{app}', currentAppToInstall);
+                refreshDesktop(); 
+            } else {
+                output.innerHTML += langDict[currentLang].installCanceled.replace('{app}', currentAppToInstall);
+            }
+            input.focus();
+            scrollToBottom();
+        };
+
+        function openTerminalWindow() {
+            terminalContainer.style.display = 'flex';
+            input.focus();
+            scrollToBottom();
+        }
+
+        function closeTerminalWindow() {
+            terminalContainer.style.display = 'none';
+        }
+
+        function refreshDesktop() {
+            desktop.innerHTML = '';
+            installedApps.forEach(app => {
+                const appDiv = document.createElement('div');
+                appDiv.className = 'desktop-app';
+                appDiv.onclick = triggerAppError;
+                appDiv.innerHTML = `
+                    <div class="desktop-icon-wrap">${getAppIconHTML(app)}</div>
+                    <div>${app}</div>
+                `;
+                desktop.appendChild(appDiv);
+            });
+        }
+
+        function triggerAppError() {
+            document.getElementById('errorPopup').style.display = 'block';
+            playLoudErrorBeeps();
+        }
+
+        function scrollToBottom() {
+            if (terminalContainer.classList.contains('fullscreen-mode')) {
+                window.scrollTo(0, document.body.scrollHeight);
+            } else {
+                terminalBody.scrollTop = terminalBody.scrollHeight;
+            }
+        }
+
+        input.addEventListener('keydown', function(event) {
+            if (event.key === 'Enter') {
+                const command = input.value.trim();
+                const commandLower = command.toLowerCase();
+                let responseText = "&gt; " + command + "<br>";
+                const t = langDict[currentLang]; // Shortcut kamus
+
+                // STATE: Menunggu Translate
+                if (currentState === 'WAITING_TRANSLATE') {
+                    if (commandLower === 'english') {
+                        currentLang = 'EN';
+                        updateUILanguage();
+                        responseText += langDict['EN'].langChanged;
+                    } else if (commandLower === 'indonesia') {
+                        currentLang = 'ID';
+                        updateUILanguage();
+                        responseText += langDict['ID'].langChanged;
+                    } else {
+                        responseText += t.invalidChoice.replace('{choice}', command);
+                    }
+                    currentState = 'NORMAL';
+                }
+                // STATE: Menunggu Pilihan Warna Teks
+                else if (currentState === 'WAITING_COLOR') {
+                    const colorMap = { 'hijau':'lime', 'green':'lime', 'merah':'red', 'red':'red', 'putih':'white', 'white':'white' };
+                    if (colorMap[commandLower]) {
+                        document.documentElement.style.setProperty('--main-color', colorMap[commandLower]);
+                        responseText += (currentLang === 'EN' ? `System: Text color changed to ${commandLower}.<br>` : `Sistem: Warna teks diubah menjadi ${commandLower}.<br>`);
+                    } else {
+                        responseText += t.invalidChoice.replace('{choice}', command);
+                    }
+                    currentState = 'NORMAL';
+                }
+                // STATE: Menunggu Pilihan Background
+                else if (currentState === 'WAITING_BG') {
+                    const bgInput = commandLower.replace("-", " ");
+                    const bgMap = {
+                        'merah':'red', 'red':'red', 'orange':'orange', 'kuning':'yellow', 'yellow':'yellow',
+                        'hijau':'green', 'green':'green', 'biru':'blue', 'blue':'blue', 'pink':'pink',
+                        'ungu':'purple', 'purple':'purple', 'coklat':'#8B4513', 'brown':'#8B4513',
+                        'hitam':'black', 'black':'black', 'putih':'white', 'white':'white',
+                        'abu abu':'gray', 'gray':'gray', 'grey':'gray'
+                    };
+
+                    if (bgMap[bgInput]) {
+                        terminalContainer.style.background = bgMap[bgInput];
+                        responseText += (currentLang === 'EN' ? `System: Background changed to ${bgInput}.<br>` : `Sistem: Background diubah menjadi warna ${bgInput}.<br>`);
+                    } 
+                    else if (bgInput === 'anime_cowok' || bgInput === 'anime cowok' || bgInput === 'anime boy' || bgInput === 'anime_boy') {
+                        terminalContainer.style.background = "url('https://i.pinimg.com/736x/82/53/78/825378775f0f3531b7e335b8e9072ec2.jpg') no-repeat center center";
+                        terminalContainer.style.backgroundSize = "cover";
+                        responseText += (currentLang === 'EN' ? `System: Background changed to Anime Boy.<br>` : `Sistem: Background diubah menjadi Anime Cowok.<br>`);
+                    } 
+                    else if (bgInput === 'anime_cewek' || bgInput === 'anime cewek' || bgInput === 'anime girl' || bgInput === 'anime_girl') {
+                        terminalContainer.style.background = "url('https://i.pinimg.com/736x/03/40/3e/03403eb8b072c1c9ff6663248c89b251.jpg') no-repeat center top";
+                        terminalContainer.style.backgroundSize = "cover";
+                        responseText += (currentLang === 'EN' ? `System: Background changed to Anime Girl (Alya).<br>` : `Sistem: Background diubah menjadi Anime Cewek (Alya).<br>`);
+                    } 
+                    else {
+                        responseText += t.invalidChoice.replace('{choice}', command);
+                    }
+                    currentState = 'NORMAL';
+                }
+                // STATE: Normal Command
+                else {
+                    if (commandLower === 'help') {
+                        responseText += t.help;
+                    } 
+                    else if (commandLower === 'translate') {
+                        responseText += t.translatePrompt;
+                        currentState = 'WAITING_TRANSLATE';
+                    }
+                    else if (commandLower === 'change_background') {
+                        responseText += t.bgPrompt;
+                        currentState = 'WAITING_BG';
+                    }
+                    else if (commandLower === 'pc_sim') {
+                        terminalContainer.classList.remove('fullscreen-mode');
+                        terminalContainer.classList.add('windowed-mode');
+                        terminalContainer.style.display = 'none'; 
+                        pcSim.style.display = 'block';
+                        refreshDesktop();
+                        responseText = ''; 
+                    }
+                    else if (commandLower === 'home') {
+                        pcSim.style.display = 'none';
+                        terminalContainer.classList.remove('windowed-mode');
+                        terminalContainer.classList.add('fullscreen-mode');
+                        terminalContainer.style.display = 'flex';
+                        responseText += t.simReturn;
+                    }
+                    else if (commandLower === 'text_color') {
+                        responseText += t.colorPrompt;
+                        currentState = 'WAITING_COLOR';
+                    }
+                    else if (commandLower.startsWith('screen ')) {
+                        const subjek = command.substring(7).trim(); 
+                        if (subjek) responseText += t.screenSuccess.replace('{subject}', subjek);
+                    } 
+                    else if (commandLower.startsWith('control ')) {
+                        const subjek = command.substring(8).trim();
+                        if (subjek) responseText += t.controlSuccess.replace('{subject}', subjek);
+                    }
+                    else if (commandLower.startsWith('install apk ')) {
+                        const appName = command.substring(12).trim();
+                        if (appName) {
+                            currentAppToInstall = appName;
+                            document.getElementById('appIconContainer').innerHTML = getAppIconHTML(appName);
+                            document.getElementById('appNameDisplay').innerText = appName;
+                            document.getElementById('installPopup').style.display = 'block';
+                            responseText += t.installOpening.replace('{app}', appName);
+                        }
+                    }
+                    else if (commandLower.startsWith('beep ')) {
+                        const waktu = parseInt(command.substring(5).trim());
+                        if (!isNaN(waktu) && waktu > 0) {
+                            playBeep(waktu);
+                            responseText += t.beepSuccess.replace('{time}', waktu);
+                        } else {
+                            responseText += t.formatErr.replace('{example}', 'beep 5');
+                        }
+                    }
+                    else if (commandLower === 'credits') {
+                        const creditsScreen = document.getElementById('creditsScreen');
+                        creditsScreen.style.transition = 'none';
+                        creditsScreen.style.opacity = '1';
+                        creditsScreen.style.display = 'flex';
+                        
+                        setTimeout(() => {
+                            creditsScreen.style.transition = 'opacity 2s ease-in-out';
+                            creditsScreen.style.opacity = '0';
+                            setTimeout(() => {
+                                creditsScreen.style.display = 'none';
+                                input.focus();
+                            }, 2000);
+                        }, 5000);
+                        responseText += t.creditsLoad;
+                    }
+                    else if (command === '') {
+                        responseText = "&gt;<br>";
+                    } 
+                    else {
+                        responseText += t.cmdNotFound.replace('{cmd}', command);
+                    }
+                }
+
+                output.innerHTML += responseText;
+                input.value = '';
+                scrollToBottom();
+            }
+        });
+
+        // Panggil fungsi saat pertama kali dimuat agar UI sinkron dengan bahasa default
+        updateUILanguage();
+    </script>
+</body>
+</html>
